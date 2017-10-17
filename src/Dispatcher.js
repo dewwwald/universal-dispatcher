@@ -6,6 +6,7 @@ const DispatchActionTypes = {
 
 export class Dispatcher {
   constructor() {
+    console.info('creating Dispatcher');
     queue = [];
     processing_event = undefined;
     processing = false;
@@ -23,7 +24,7 @@ export class Dispatcher {
   _dispatch(resolver) {
     if (this.event.type === typeActions.UPDATE) {
       this._dispatchUpdate(resolver);
-    } else {
+    } else { // asume typeActions.EVENT
       this._dispatchEvent(resolver);
     }
   }
@@ -34,21 +35,18 @@ export class Dispatcher {
    * @returns null;
    */
   _dispatchEvent(resolver) {
-    this.emitDispatchableEvent(this.event);
+    this._emitDispatchableEvent(this.event);
     resolver();
   }
 
   _dispatchUpdate(resolver) {
-    if (!defined(this.dispatchableValues[this.event.key])) {
-      this.dispatchableValues[this.event.key] = [];
-    }
-    if (typeof this.event.dispatcherAction.updateCallback === 'function') {
-      this.dispatchableValues[this.event.key][this.event.dispatcherAction.action]
-        = this.event.dispatcherAction.updateCallback(this.dispatchableValues[this.event.key][this.event.dispatcherAction.action]);
+    if (typeof this.event.updateCallback === 'function') {
+      this.dispatchableValues[this.event.action]
+        = this.event.updateCallback(this.dispatchableValues[this.event.action]);
     } else {
-      this.dispatchableValues[this.event.key][this.event.dispatcherAction.action] = this.event.dispatcherAction;
+      this.dispatchableValues[this.event.action] = this.event.value;
     }
-    this.emitDispatchableValues(this.event.dispatcherAction.action);
+    this._emitDispatchableValues(this.event.action);
     resolver();
   }
 
@@ -63,11 +61,11 @@ export class Dispatcher {
   /**
    * Tracks a value and and emit update events throughout the application
    */
-  _registerUpdate(action, value) {
+  _registerUpdate(action, value, updateCallback) {
     if (!defined(value)) {
       throw new Error('Dispatcher can only track values that are defined.');
     }
-    this.queue.push({ action: action, value: value, type: typeActions.UPDATE });
+    this.queue.push({ action: action, value: value, type: typeActions.UPDATE, updateCallback: updateCallback });
     this._processNextAction();
   }
 
@@ -83,12 +81,12 @@ export class Dispatcher {
   /**
    * Tracks a value and and emit update events throughout the application
    */
-  _hardRegisterUpdate(action, value) {
+  _hardRegisterUpdate(action, value, updateCallback) {
     if (!defined(value)) {
       throw new Error('Dispatcher can only track values that are defined.');
     }
     this.queue = this.queue.filter(v => v.dispatcherAction.action !== dispatcherAction.action);
-    this.queue.splice(0, 0, { type: typeActions.UPDATE, action: action, value: value });
+    this.queue.splice(0, 0, { type: typeActions.UPDATE, action: action, value: value, updateCallback: updateCallback });
     this._processNextAction();
   }
 
